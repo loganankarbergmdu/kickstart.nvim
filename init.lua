@@ -147,6 +147,10 @@ do
   vim.o.splitright = true
   vim.o.splitbelow = true
 
+  -- Source .nvim.lua from the project directory if one exists.
+  -- This allows per-project overrides (e.g. JAVA_HOME for a specific JDK).
+  vim.o.exrc = true
+
   -- Sets how neovim will display certain whitespace characters in the editor.
   --  See `:help 'list'`
   --  and `:help 'listchars'`
@@ -684,6 +688,12 @@ do
       if client and client:supports_method('textDocument/inlayHint', event.buf) then
         map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, '[T]oggle Inlay [H]ints')
       end
+
+      -- Register nvim-jdtls DAP integration when jdtls attaches to a Java buffer.
+      -- Requires the java-debug bundle to be loaded via init_options.bundles above.
+      if client and client.name == 'jdtls' then
+        require('jdtls').setup_dap { hotcodereplace = 'auto' }
+      end
     end,
   })
 
@@ -695,7 +705,39 @@ do
     -- clangd = {},
     -- gopls = {},
     -- pyright = {},
-    -- rust_analyzer = {},
+    jdtls = {
+      init_options = {
+        -- Load java-debug bundle so jdtls can start a debug session
+        bundles = {
+          vim.fn.glob(vim.fn.stdpath 'data' .. '/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar', 1)
+        },
+      },
+      settings = {
+        java = {
+          configuration = {
+            runtimes = {
+              {
+                name = "JavaSE-1.8",
+                path = "/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home"
+              },
+              {
+                name = "JavaSE-11",
+                path = "/Library/Java/JavaVirtualMachines/temurin-11.jdk/Contents/Home"
+              },
+              {
+                name = "JavaSE-17",
+                path = "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+              },
+              {
+                name = "JavaSE-25",
+                path = "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home"
+              }
+            }
+          }
+        }
+      }
+    },
+    rust_analyzer = {},
     --
     -- Some languages (like typescript) have entire language plugins that can be useful:
     --    https://github.com/pmizio/typescript-tools.nvim
@@ -747,8 +789,19 @@ do
     gh 'WhoIsSethDaniel/mason-tool-installer.nvim',
   }
 
+  vim.pack.add {
+    gh 'mfussenegger/nvim-jdtls'
+  }
+
   -- Automatically install LSPs and related tools to stdpath for Neovim
   require('mason').setup {}
+
+  -- Wire up Lombok support: Mason downloads lombok.jar alongside jdtls.
+  -- nvim-lspconfig's jdtls cmd reads JDTLS_JVM_ARGS and forwards each token
+  -- as --jvm-arg=... to the launcher, so -javaagent makes jdt.ls understand
+  -- Lombok-generated fields/methods (e.g. `log` from @Slf4j, @Data, etc.).
+  local lombok_jar = vim.fn.stdpath 'data' .. '/mason/share/jdtls/lombok.jar'
+  if vim.uv.fs_stat(lombok_jar) then vim.env.JDTLS_JVM_ARGS = '-javaagent:' .. lombok_jar end
 
   -- Ensure the servers and tools above are installed
   --
@@ -759,7 +812,7 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'java-debug-adapter', -- DAP bundle loaded by jdtls for Java debugging
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -966,7 +1019,7 @@ do
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug'
+  require 'kickstart.plugins.debug'
   -- require 'kickstart.plugins.indent_line'
   -- require 'kickstart.plugins.lint'
   -- require 'kickstart.plugins.autopairs'

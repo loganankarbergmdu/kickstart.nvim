@@ -42,6 +42,7 @@ require('mason-nvim-dap').setup {
   ensure_installed = {
     -- Update this to ensure that you have the debuggers for the langs you want
     'delve',
+    'codelldb',
   },
 }
 
@@ -91,5 +92,30 @@ require('dap-go').setup {
     -- On Windows delve must be run attached or it crashes.
     -- See https://github.com/leoluz/nvim-dap-go/blob/main/README.md#configuring
     detached = vim.fn.has 'win32' == 0,
+  },
+}
+
+dap.configurations.rust = {
+  {
+    name = 'Launch',
+    type = 'codelldb',
+    request = 'launch',
+    program = function()
+      local cwd = vim.fn.getcwd()
+      -- Read package name from Cargo.toml to pre-fill the binary path
+      local binary = nil
+      local f = io.open(cwd .. '/Cargo.toml')
+      if f then
+        for line in f:lines() do
+          binary = line:match('^name%s*=%s*"([^"]+)"')
+          if binary then break end
+        end
+        f:close()
+      end
+      local default = cwd .. '/target/debug/' .. (binary or '')
+      return vim.fn.input('Executable: ', default, 'file')
+    end,
+    cwd = '${workspaceFolder}',
+    stopOnEntry = false,
   },
 }

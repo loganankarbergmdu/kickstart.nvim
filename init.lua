@@ -691,9 +691,7 @@ do
 
       -- Register nvim-jdtls DAP integration when jdtls attaches to a Java buffer.
       -- Requires the java-debug bundle to be loaded via init_options.bundles above.
-      if client and client.name == 'jdtls' then
-        require('jdtls').setup_dap { hotcodereplace = 'auto' }
-      end
+      if client and client.name == 'jdtls' then require('jdtls').setup_dap { hotcodereplace = 'auto' } end
     end,
   })
 
@@ -709,7 +707,7 @@ do
       init_options = {
         -- Load java-debug bundle so jdtls can start a debug session
         bundles = {
-          vim.fn.glob(vim.fn.stdpath 'data' .. '/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar', 1)
+          vim.fn.glob(vim.fn.stdpath 'data' .. '/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar', 1),
         },
       },
       settings = {
@@ -717,25 +715,25 @@ do
           configuration = {
             runtimes = {
               {
-                name = "JavaSE-1.8",
-                path = "/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home"
+                name = 'JavaSE-1.8',
+                path = '/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home',
               },
               {
-                name = "JavaSE-11",
-                path = "/Library/Java/JavaVirtualMachines/temurin-11.jdk/Contents/Home"
+                name = 'JavaSE-11',
+                path = '/Library/Java/JavaVirtualMachines/temurin-11.jdk/Contents/Home',
               },
               {
-                name = "JavaSE-17",
-                path = "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+                name = 'JavaSE-17',
+                path = '/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home',
               },
               {
-                name = "JavaSE-25",
-                path = "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home"
-              }
-            }
-          }
-        }
-      }
+                name = 'JavaSE-25',
+                path = '/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home',
+              },
+            },
+          },
+        },
+      },
     },
     rust_analyzer = {},
     --
@@ -790,7 +788,7 @@ do
   }
 
   vim.pack.add {
-    gh 'mfussenegger/nvim-jdtls'
+    gh 'mfussenegger/nvim-jdtls',
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
@@ -813,6 +811,11 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     'java-debug-adapter', -- DAP bundle loaded by jdtls for Java debugging
+    'prettierd',
+    'prettier',
+    'biome',
+    'isort',
+    'black',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -835,8 +838,13 @@ do
     format_on_save = function(bufnr)
       -- You can specify filetypes to autoformat on save here:
       local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
+        html = true,
+        javascript = true,
+        json = true,
+        lua = true,
+        markdown = true,
+        python = true,
+        rust = true,
       }
       if enabled_filetypes[vim.bo[bufnr].filetype] then
         return { timeout_ms = 500 }
@@ -849,12 +857,15 @@ do
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
       -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      html = { 'prettier' },
+      javascript = { 'prettierd', 'prettier', stop_after_first = true },
+      json = { 'biome', 'prettier', stop_after_first = true },
+      lua = { 'stylua' },
+      markdown = { 'prettier' },
+      -- Conform can also run multiple formatters sequentially
+      python = { 'isort', 'black' },
+      rust = { 'rustfmt' },
     },
   }
 
